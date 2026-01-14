@@ -8,6 +8,7 @@ const FRACTION_LABELS = {
 
 const form = document.getElementById("calculator");
 const input = document.getElementById("totalWeight");
+const startInput = document.getElementById("startWeight");
 const result = document.getElementById("result");
 
 const formatWeight = (value) => {
@@ -24,23 +25,70 @@ const renderError = (message) => {
   result.innerHTML = `<p class="note">${message}</p>`;
 };
 
-const renderResult = (plates, perSide, total) => {
-  const plateRows = plates
+const roundToIncrement = (value, increment) => Math.round(value / increment) * increment;
+
+const renderPlateRows = (plates) =>
+  plates
     .map(
       ({ plate, count }) =>
         `<li class="result-item"><span>${formatPlateLabel(plate)}</span><span>x ${count} per side</span></li>`
     )
     .join("");
 
-  result.innerHTML = `
-    <h2>Plates to load</h2>
-    <ul class="result-list">${plateRows}</ul>
+const renderPlateSummary = (plates, perSide, total, showBar) => {
+  if (!plates.length) {
+    return `<p class="result-placeholder">Just the ${BAR_WEIGHT} lb bar.</p>`;
+  }
+
+  return `
+    <ul class="result-list">${renderPlateRows(plates)}</ul>
     <div class="result-meta">
-      <span>Bar: ${BAR_WEIGHT} lb</span>
+      ${showBar ? `<span>Bar: ${BAR_WEIGHT} lb</span>` : ""}
       <span>Per side: ${formatWeight(perSide)} lb</span>
       <span>Total: ${formatWeight(total)} lb</span>
     </div>
   `;
+};
+
+const renderWarmups = (warmups) =>
+  warmups
+    .map(
+      (warmup, index) => `
+        <article class="warmup-card">
+          <h3>Set ${index + 1} - ${formatWeight(warmup.total)} lb</h3>
+          ${renderPlateSummary(warmup.plates, warmup.perSide, warmup.total, false)}
+        </article>
+      `
+    )
+    .join("");
+
+const renderResult = (warmups, workingSet) => {
+  result.innerHTML = `
+    <div class="result-section">
+      <h2>Warmup sets</h2>
+      <div class="warmup-grid">${renderWarmups(warmups)}</div>
+    </div>
+    <div class="result-section">
+      <h2>Working set</h2>
+      ${renderPlateSummary(workingSet.plates, workingSet.perSide, workingSet.total, true)}
+    </div>
+  `;
+};
+
+const isValidIncrement = (value) => Math.abs(value - Math.round(value * 2) / 2) <= 1e-6;
+
+const buildWarmupWeights = (start, total, count) => {
+  if (count <= 1) {
+    return [total];
+  }
+
+  const step = (total - start) / (count - 1);
+  const weights = Array.from({ length: count }, (_, index) =>
+    roundToIncrement(start + step * index, 0.5)
+  );
+  weights[0] = start;
+  weights[weights.length - 1] = total;
+  return weights;
 };
 
 const calculatePlates = (total) => {
@@ -53,8 +101,7 @@ const calculatePlates = (total) => {
   }
 
   const delta = total - BAR_WEIGHT;
-  const roundedDelta = Math.round(delta * 2) / 2;
-  if (Math.abs(delta - roundedDelta) > 1e-6) {
+  if (!isValidIncrement(delta)) {
     return { error: "Total must be in 0.5 lb increments (0.25 per side)." };
   }
 
@@ -80,20 +127,54 @@ const calculatePlates = (total) => {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const total = Number.parseFloat(input.value);
-  const { plates, perSide, error } = calculatePlates(total);
+  const start = Number.parseFloat(startInput.value);
 
-  if (error) {
-    renderError(error);
+  if (Number.isNaN(start)) {
+    renderError("Enter a valid starting weight.");
     return;
   }
 
-  if (!plates.length) {
-    result.innerHTML = `
-      <h2>Plates to load</h2>
-      <p class="result-placeholder">Just the 45 lb bar.</p>
-    `;
+  if (start < BAR_WEIGHT) {
+    renderError(`Starting weight must be at least ${BAR_WEIGHT} lb.`);
     return;
   }
 
-  renderResult(plates, perSide, total);
+  if (!isValidIncrement(start)) {
+    renderError("Starting weight must be in 0.5 lb increments (0.25 per side).");
+    return;
+  }
+
+  if (Number.isNaN(total)) {
+    renderError("Enter a valid working weight.");
+    return;
+  }
+
+  if (start > total) {
+    renderError("Starting weight must be at or below the working weight.");
+    return;
+  }
+
+  const workingSet = calculatePlates(total);
+
+  if (workingSet.error) {
+    renderError(workingSet.error);
+    return;
+  }
+
+  const warmupWeights = buildWarmupWeights(start, total, 4);
+  const warmups = [];
+
+  for (let index = 0; index < warmupWeights.length; index += 1) {
+    const weight = warmupWeights[index];
+    const warmupSet = calculatePlates(weight);
+
+    if (warmupSet.error) {
+      renderError(`Warmup set ${index + 1}: ${warmupSet.error}`);
+      return;
+    }
+
+    warmups.push({ total: weight, plates: warmupSet.plates, perSide: warmupSet.perSide });
+  }
+
+  renderResult(warmups, { ...workingSet, total });
 });
