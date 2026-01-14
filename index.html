@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plate Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <div class="title-wrap">
+          <p class="eyebrow">Barbell Plate Calculator</p>
+          <h1>Load the bar in seconds.</h1>
+          <p class="subtitle">
+            Enter your total target weight. The 45 lb bar is always included.
+          </p>
+        </div>
+
+        <form id="calculator" class="calc" novalidate>
+          <label class="field">
+            <span>Total weight (lb)</span>
+            <input
+              id="totalWeight"
+              name="totalWeight"
+              type="number"
+              inputmode="decimal"
+              min="45"
+              step="0.25"
+              placeholder="e.g. 225"
+              required
+            />
+          </label>
+          <button class="btn" type="submit">Calculate plates</button>
+        </form>
+
+        <div id="result" class="result" aria-live="polite">
+          <p class="result-placeholder">Plates per side will show up here.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
