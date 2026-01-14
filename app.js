@@ -70,7 +70,7 @@ const renderResult = (warmups, workingSet) => {
       <div class="warmup-grid">${renderWarmups(warmups)}</div>
     </div>
     <div class="result-section">
-      <h2>Working set</h2>
+      <h2>Working set - ${formatWeight(workingSet.total)} lb</h2>
       ${renderPlateSummary(workingSet.plates, workingSet.perSide, workingSet.total, true)}
     </div>
   `;
