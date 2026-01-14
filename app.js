@@ -26,6 +26,7 @@ const renderError = (message) => {
 };
 
 const roundToIncrement = (value, increment) => Math.round(value / increment) * increment;
+const roundDownToIncrement = (value, increment) => Math.floor(value / increment) * increment;
 
 const renderPlateRows = (plates) =>
   plates
@@ -79,15 +80,21 @@ const isValidIncrement = (value) => Math.abs(value - Math.round(value * 2) / 2) 
 
 const buildWarmupWeights = (start, total, count) => {
   if (count <= 1) {
-    return [total];
+    return [start];
   }
 
-  const step = (total - start) / (count - 1);
-  const weights = Array.from({ length: count }, (_, index) =>
-    roundToIncrement(start + step * index, 0.5)
-  );
+  const step = (total - start) / count;
+  const maxWarmup = total - 0.5;
+  const weights = Array.from({ length: count }, (_, index) => {
+    if (index === 0) {
+      return start;
+    }
+
+    const raw = start + step * index;
+    const floored = roundDownToIncrement(raw, 0.5);
+    return Math.max(start, Math.min(floored, maxWarmup));
+  });
   weights[0] = start;
-  weights[weights.length - 1] = total;
   return weights;
 };
 
@@ -149,8 +156,8 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  if (start > total) {
-    renderError("Starting weight must be at or below the working weight.");
+  if (start >= total) {
+    renderError("Starting weight must be below the working weight.");
     return;
   }
 
